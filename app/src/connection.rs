@@ -1,6 +1,6 @@
 use ewebsock::{connect, WsEvent, WsMessage, WsReceiver, WsSender};
 use ewebsock::WsMessage::Text;
-use crate::models::Message;
+use crate::models::{Connect, Message, SendMessage};
 
 pub struct Connection {
     sender: WsSender,
@@ -16,9 +16,16 @@ pub enum  ConnectionEvent {
 
 impl Connection {
 
-    pub fn new() -> Connection {
+    pub fn new(server: String, room: String, user: String) -> Connection {
 
-        let (sender, receiver) = connect("ws://localhost:6789").unwrap();
+        let (mut sender, receiver) = connect(&server).expect("Failed to create WebSocket");
+
+        let connect_message = serde_json::to_string(&Connect {
+            room,
+            user,
+        }).expect("Failed to stringify!");
+        
+        sender.send(Text(connect_message));
 
         Connection {
             sender,
@@ -51,7 +58,7 @@ impl Connection {
         })
     }
 
-    pub fn send(&mut self, message: Message) {
+    pub fn send(&mut self, message: SendMessage) {
         let encoded = serde_json::to_string(&message).unwrap();
         self.sender.send(Text(encoded));
     }
