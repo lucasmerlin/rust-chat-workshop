@@ -1,8 +1,9 @@
+use eframe::egui::Event::PointerButton;
 use eframe::egui::TextStyle;
 use crate::connection::{Connection, ConnectionEvent};
 use crate::egui;
-use crate::egui::ScrollArea;
-use crate::models::Message;
+use crate::egui::{Key, ScrollArea, Sense};
+use crate::models::{Message, SendMessage};
 
 enum Status {
     Connecting,
@@ -85,12 +86,12 @@ impl ChatUi {
                 }
             );
             ui.horizontal(|ui| {
-                ui.text_edit_singleline(&mut self.input_message);
-                if ui.button("Send").clicked() {
-                    self.connection.send(Message {
-                        text: std::mem::take(&mut self.input_message)
+                let input = ui.text_edit_singleline(&mut self.input_message);
+                if ui.button("Send").clicked() || input.lost_focus() && ui.input().key_pressed(Key::Enter) {
+                    input.request_focus();
+                    self.connection.send(SendMessage {
+                        text: std::mem::take(&mut self.input_message),
                     });
-                    self.input_message = "".to_string();
                 }
             });
         });

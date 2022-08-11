@@ -3,7 +3,7 @@ use eframe::egui::Frame;
 
 use crate::chat_ui::ChatUi;
 use crate::connection::Connection;
-use crate::egui::{Button, CentralPanel, Grid, TextEdit, Window};
+use crate::egui::{Button, CentralPanel, Grid, Key, TextEdit, Window};
 
 mod connection;
 mod models;
@@ -97,7 +97,7 @@ impl eframe::App for MyApp {
                             }
 
                             ui.add_enabled_ui(user.len() > 0, |ui| {
-                                if ui.button("Connect").clicked() {
+                                if ui.button("Connect").clicked() || ui.input().key_pressed(Key::Enter) {
                                     save_state = true;
 
                                     self.state = AppState::Chat(ChatUi::new(Connection::new(
