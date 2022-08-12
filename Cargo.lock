@@ -42,6 +42,7 @@ version = "0.1.0"
 dependencies = [
  "eframe",
  "ewebsock",
+ "models",
  "serde",
  "serde_json",
  "tokio",
@@ -1012,6 +1013,13 @@ dependencies = [
  "log",
  "wasi",
  "windows-sys",
+]
+
+[[package]]
+name = "models"
+version = "0.1.0"
+dependencies = [
+ "serde",
 ]
 
 [[package]]

@@ -1,9 +1,9 @@
 use eframe::egui::Event::PointerButton;
 use eframe::egui::TextStyle;
+use models::{Message, SendMessage};
 use crate::connection::{Connection, ConnectionEvent};
 use crate::egui;
 use crate::egui::{Key, ScrollArea, Sense};
-use crate::models::{Message, SendMessage};
 
 enum Status {
     Connecting,

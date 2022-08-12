@@ -6,7 +6,6 @@ use crate::connection::Connection;
 use crate::egui::{Button, CentralPanel, Grid, Key, TextEdit, Window};
 
 mod connection;
-mod models;
 mod chat_ui;
 
 #[tokio::main]

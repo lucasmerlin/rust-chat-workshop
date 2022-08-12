@@ -1,6 +1,6 @@
 use ewebsock::{connect, WsEvent, WsMessage, WsReceiver, WsSender};
 use ewebsock::WsMessage::Text;
-use crate::models::{Connect, Message, SendMessage};
+use models::{Connect, Message, SendMessage};
 
 pub struct Connection {
     sender: WsSender,
