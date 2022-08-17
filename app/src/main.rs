@@ -8,6 +8,7 @@ use crate::egui::{Button, CentralPanel, Grid, Key, TextEdit, Window};
 mod connection;
 mod chat_ui;
 
+#[cfg(not(target_arch = "wasm32"))]
 #[tokio::main]
 async fn main() {
     let options = eframe::NativeOptions::default();
@@ -16,6 +17,13 @@ async fn main() {
         options,
         Box::new(|cc| Box::new(MyApp::new(cc))),
     );
+}
+
+#[cfg(target_arch = "wasm32")]
+fn main() {
+    use eframe::wasm_bindgen::{self, prelude::*};
+
+    eframe::start_web("canvas", Box::new(|cc| Box::new(MyApp::new(cc))));
 }
 
 #[derive(serde::Deserialize, serde::Serialize)]
@@ -45,7 +53,7 @@ impl Default for MyApp {
             values: AppValues {
                 room: "test".to_string(),
                 server: "ws://localhost:6789".to_string(),
-                user: "user".to_string(),
+                user: "".to_string(),
             },
             state: AppState::Home,
         }
@@ -103,6 +111,7 @@ impl eframe::App for MyApp {
                                         server.to_string(),
                                         room.to_string(),
                                         user.to_string(),
+                                        ctx.clone(),
                                     )));
                                 };
                             });

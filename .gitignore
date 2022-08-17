@@ -1,3 +1,5 @@
 .idea
 ww-chat-app.iml
 target
+
+/app/dist

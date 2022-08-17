@@ -72,27 +72,37 @@ impl ChatUi {
                     }
                 }
             });
+            let scroll_height = ui.available_height() - 27.0;
             let text_height = ui.text_style_height(&TextStyle::Body);
-            ScrollArea::vertical().stick_to_bottom().show_rows(
-                ui,
-                text_height,
-                self.messages.len(),
-                |ui, row_range| {
-                    for row in row_range {
-                        ui.horizontal(|ui| {
-                           ui.label(&self.messages[row].text);
-                        });
+            ui.vertical(|ui| {
+                ScrollArea::vertical()
+                    .stick_to_bottom()
+                    .auto_shrink([false, false])
+                    .max_height(scroll_height)
+                    .show_rows(
+                    ui,
+                    text_height,
+                    self.messages.len(),
+                    |ui, row_range| {
+                        for row in row_range {
+                            ui.horizontal(|ui| {
+                               ui.label(format!("{}:", self.messages[row].user));
+                               ui.label(&self.messages[row].text);
+                            });
+                        }
                     }
-                }
-            );
-            ui.horizontal(|ui| {
-                let input = ui.text_edit_singleline(&mut self.input_message);
-                if ui.button("Send").clicked() || input.lost_focus() && ui.input().key_pressed(Key::Enter) {
-                    input.request_focus();
-                    self.connection.send(SendMessage {
-                        text: std::mem::take(&mut self.input_message),
+                );
+                ui.horizontal(|ui| {
+                    let input = ui.text_edit_singleline(&mut self.input_message);
+                    ui.add_enabled_ui(self.input_message.len() > 0, |ui| {
+                        if ui.button("Send").clicked() || input.lost_focus() && ui.input().key_pressed(Key::Enter) && self.input_message.trim() != "" {
+                            input.request_focus();
+                            self.connection.send(SendMessage {
+                                text: std::mem::take(&mut self.input_message),
+                            });
+                        }
                     });
-                }
+                });
             });
         });
     }
