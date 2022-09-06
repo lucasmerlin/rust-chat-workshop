@@ -1,18 +1,28 @@
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct Message {
-    pub text: String,
-    pub user: String,
+#[serde(tag = "type")]
+pub enum ServerMessage {
+    Message {
+        text: String,
+        user: String,
+    },
+    Joined {
+        user: String,
+    },
+    Left {
+        user: String,
+    },
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-pub struct SendMessage {
-    pub text: String,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct Connect {
-    pub room: String,
-    pub user: String,
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(tag = "type")]
+pub enum ClientMessage {
+    SendMessage {
+        text: String,
+    },
+    Connect {
+        room: String,
+        user: String,
+    },
 }

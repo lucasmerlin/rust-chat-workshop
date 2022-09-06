@@ -1,9 +1,10 @@
-use eframe::egui::Event::PointerButton;
 use eframe::egui::TextStyle;
-use models::{Message, SendMessage};
+
+use models::{ClientMessage, ServerMessage};
+
 use crate::connection::{Connection, ConnectionEvent};
 use crate::egui;
-use crate::egui::{Key, ScrollArea, Sense};
+use crate::egui::{Key, RichText, ScrollArea};
 
 enum Status {
     Connecting,
@@ -16,7 +17,7 @@ pub struct ChatUi {
     input_message: String,
 
     connection: Connection,
-    messages: Vec<Message>,
+    messages: Vec<ServerMessage>,
 
     status: Status,
 }
@@ -80,24 +81,34 @@ impl ChatUi {
                     .auto_shrink([false, false])
                     .max_height(scroll_height)
                     .show_rows(
-                    ui,
-                    text_height,
-                    self.messages.len(),
-                    |ui, row_range| {
-                        for row in row_range {
-                            ui.horizontal(|ui| {
-                               ui.label(format!("{}:", self.messages[row].user));
-                               ui.label(&self.messages[row].text);
-                            });
-                        }
-                    }
-                );
+                        ui,
+                        text_height,
+                        self.messages.len(),
+                        |ui, row_range| {
+                            for row in row_range {
+                                match &self.messages[row] {
+                                    ServerMessage::Message { user, text } => {
+                                        ui.horizontal(|ui| {
+                                            ui.label(format!("{}:", user));
+                                            ui.label(text);
+                                        });
+                                    }
+                                    ServerMessage::Joined { user } => {
+                                        ui.label(RichText::new(&format!("{user} joined the room")).italics());
+                                    }
+                                    ServerMessage::Left { user } => {
+                                        ui.label(RichText::new(&format!("{user} left the room")).italics());
+                                    }
+                                }
+                            }
+                        },
+                    );
                 ui.horizontal(|ui| {
                     let input = ui.text_edit_singleline(&mut self.input_message);
                     ui.add_enabled_ui(self.input_message.len() > 0, |ui| {
                         if ui.button("Send").clicked() || input.lost_focus() && ui.input().key_pressed(Key::Enter) && self.input_message.trim() != "" {
                             input.request_focus();
-                            self.connection.send(SendMessage {
+                            self.connection.send(ClientMessage::SendMessage {
                                 text: std::mem::take(&mut self.input_message),
                             });
                         }

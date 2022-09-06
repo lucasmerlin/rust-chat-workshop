@@ -1,17 +1,17 @@
 use eframe::egui;
 use ewebsock::{connect, connect_with_wakeup, WsEvent, WsMessage, WsReceiver, WsSender};
 use ewebsock::WsMessage::Text;
-use models::{Connect, Message, SendMessage};
+use models::{ClientMessage, ServerMessage};
 
 pub struct Connection {
     sender: WsSender,
     receiver: WsReceiver,
-    connect_message: Connect,
+    connect_message: ClientMessage,
 }
 
 pub enum  ConnectionEvent {
     Opened,
-    Message(Message),
+    Message(ServerMessage),
     Error(String),
     Closed,
 }
@@ -25,7 +25,7 @@ impl Connection {
         Connection {
             sender,
             receiver,
-            connect_message: Connect {
+            connect_message: ClientMessage::Connect {
                 room,
                 user,
             }
@@ -60,7 +60,7 @@ impl Connection {
         })
     }
 
-    pub fn send(&mut self, message: SendMessage) {
+    pub fn send(&mut self, message: ClientMessage) {
         let encoded = serde_json::to_string(&message).unwrap();
         self.sender.send(Text(encoded));
     }
