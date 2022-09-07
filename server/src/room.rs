@@ -37,3 +37,23 @@ impl RoomActor {
 pub struct RoomHandle {
     tx: mpsc::Sender<RoomMessage>,
 }
+
+impl RoomHandle {
+    pub fn new() -> Self {
+        let (tx, rx) = mpsc::channel(100);
+
+        let mut actor = RoomActor {
+            rx,
+            users: HashMap::new(),
+            next_connection_id: 0,
+        };
+
+        tokio::spawn(async move {
+            actor.run().await
+        });
+
+        RoomHandle {
+            tx,
+        }
+    }
+}
