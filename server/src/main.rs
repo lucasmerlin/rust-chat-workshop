@@ -1,3 +1,6 @@
+mod room;
+mod connection;
+
 use std::io::Error;
 
 use futures_util::TryStreamExt;
