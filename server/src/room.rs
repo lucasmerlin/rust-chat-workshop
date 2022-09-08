@@ -37,6 +37,12 @@ impl RoomActor {
                         user,
                     }).await;
                 }
+                RoomMessage::ClientMessage(ClientMessage::SendMessage { text }, user) => {
+                    self.broadcast(ServerMessage::Message {
+                        text,
+                        user,
+                    }).await;
+                }
                 _ => {}
             }
         }
