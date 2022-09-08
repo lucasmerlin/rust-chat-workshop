@@ -4,7 +4,9 @@ use futures_util::{SinkExt, StreamExt};
 use tokio::net::TcpStream;
 use tokio::sync::{mpsc, oneshot};
 use tokio_tungstenite::WebSocketStream;
-use models::ClientMessage;
+
+use models::{ClientMessage, ServerMessage};
+
 use crate::connection::Connection;
 
 #[derive(Debug)]
@@ -32,6 +34,14 @@ impl RoomActor {
                     self.next_connection_id += 1;
                 }
                 _ => {}
+            }
+        }
+    }
+
+    async fn broadcast(&mut self, msg: ServerMessage) {
+        if let Ok(json) = serde_json::to_string(&msg) {
+            for connection in self.users.values() {
+                connection.sender.send(tungstenite::Message::Text(json.clone())).await.unwrap();
             }
         }
     }
