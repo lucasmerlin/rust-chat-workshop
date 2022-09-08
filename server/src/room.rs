@@ -1,5 +1,7 @@
 use std::collections::HashMap;
+use tokio::net::TcpStream;
 use tokio::sync::{mpsc, oneshot};
+use tokio_tungstenite::WebSocketStream;
 use models::ClientMessage;
 use crate::connection::Connection;
 
@@ -55,5 +57,19 @@ impl RoomHandle {
         RoomHandle {
             tx,
         }
+    }
+
+
+    pub async fn join(&self, user: String, stream: WebSocketStream<TcpStream>) {
+        let (conn_id_tx, conn_id_rx) = oneshot::channel();
+        let (sender_tx, mut sender_rx) = mpsc::channel(100);
+
+        self.tx.send(RoomMessage::Join(Connection {
+            sender: sender_tx,
+            user: user.clone(),
+        }, conn_id_tx)).await.unwrap();
+
+        let conn_id = conn_id_rx.await.unwrap();
+        println!("{user} successfully joined room with user id {conn_id}")
     }
 }
