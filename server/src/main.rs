@@ -2,11 +2,16 @@ mod room;
 mod connection;
 
 use std::io::Error;
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
 
 use futures_util::TryStreamExt;
 use tokio::net::{TcpListener, TcpStream};
 
 use models::ClientMessage;
+use crate::room::RoomHandle;
+
+type Rooms = Arc<Mutex<HashMap<String, RoomHandle>>>;
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
@@ -14,8 +19,10 @@ async fn main() -> Result<(), Error> {
 
     let listener = TcpListener::bind(addr).await?;
 
+    let rooms = Arc::new(Mutex::new(HashMap::new()));
+
     while let Ok((stream, _)) = listener.accept().await {
-        tokio::spawn(accept_connection(stream));
+        tokio::spawn(accept_connection(stream, rooms.clone()));
     }
 
     Ok(())
