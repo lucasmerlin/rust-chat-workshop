@@ -3,3 +3,6 @@ ww-chat-app.iml
 target
 
 /app/dist
+
+node_modules
+slides/dist
