@@ -105,5 +105,16 @@ impl RoomHandle {
                 }
             }
         });
+
+        let actor_tx = self.tx.clone();
+
+        tokio::spawn(async move {
+            while let Some(Ok(tungstenite::Message::Text(text))) = ws_rx.next().await {
+                if let Ok(value) = serde_json::from_str::<ClientMessage>(&text) {
+                    actor_tx.send(RoomMessage::ClientMessage(value, user.clone())).await.unwrap();
+                }
+            }
+            actor_tx.send(RoomMessage::Leave(conn_id)).await.unwrap();
+        });
     }
 }
