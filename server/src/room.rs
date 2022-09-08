@@ -43,7 +43,10 @@ impl RoomActor {
                         user,
                     }).await;
                 }
-                _ => {}
+                RoomMessage::Leave(conn_id) => {
+                    self.remove_user(conn_id).await;
+                }
+                _ => ()
             }
         }
     }
@@ -53,6 +56,15 @@ impl RoomActor {
             for connection in self.users.values() {
                 connection.sender.send(tungstenite::Message::Text(json.clone())).await.unwrap();
             }
+        }
+    }
+
+    async fn remove_user(&mut self, conn_id: u64) {
+        let connection = self.users.remove(&conn_id);
+        if let Some(connection) = connection {
+            self.broadcast(ServerMessage::Left {
+                user: connection.user,
+            }).await;
         }
     }
 }
