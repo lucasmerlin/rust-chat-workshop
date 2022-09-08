@@ -27,11 +27,15 @@ impl RoomActor {
         while let Some(msg) = self.rx.recv().await {
             match msg {
                 RoomMessage::Join(connection, send_uid) => {
-                    println!("User {} joined", connection.user);
+                    let user = connection.user.clone();
 
                     self.users.insert(self.next_connection_id, connection);
                     send_uid.send(self.next_connection_id).unwrap();
                     self.next_connection_id += 1;
+
+                    self.broadcast(ServerMessage::Joined {
+                        user,
+                    }).await;
                 }
                 _ => {}
             }
