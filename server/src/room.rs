@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use futures_util::{SinkExt, StreamExt};
+use hyper::upgrade::Upgraded;
 use tokio::net::TcpStream;
 use tokio::sync::{mpsc, oneshot};
 use tokio_tungstenite::WebSocketStream;
@@ -94,7 +95,7 @@ impl RoomHandle {
     }
 
 
-    pub async fn join(&self, user: String, stream: WebSocketStream<TcpStream>) {
+    pub async fn join(&self, user: String, stream: WebSocketStream<Upgraded>) {
         let (conn_id_tx, conn_id_rx) = oneshot::channel();
         let (sender_tx, mut sender_rx) = mpsc::channel(100);
 
