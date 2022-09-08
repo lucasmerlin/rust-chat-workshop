@@ -1,4 +1,6 @@
 use std::collections::HashMap;
+
+use futures_util::{SinkExt, StreamExt};
 use tokio::net::TcpStream;
 use tokio::sync::{mpsc, oneshot};
 use tokio_tungstenite::WebSocketStream;
@@ -70,6 +72,18 @@ impl RoomHandle {
         }, conn_id_tx)).await.unwrap();
 
         let conn_id = conn_id_rx.await.unwrap();
-        println!("{user} successfully joined room with user id {conn_id}")
+        println!("{user} successfully joined room with user id {conn_id}");
+
+        let (mut ws_tx, mut ws_rx) = stream.split();
+
+        let actor_tx = self.tx.clone();
+
+        tokio::spawn(async move {
+            while let Some(msg) = sender_rx.recv().await {
+                if let Err(_) = ws_tx.send(msg).await {
+                    actor_tx.send(RoomMessage::Leave(conn_id)).await.unwrap();
+                }
+            }
+        });
     }
 }
