@@ -1,3 +1,4 @@
+use std::sync::atomic::{AtomicU64, Ordering};
 use eframe::egui::TextStyle;
 
 use models::{ClientMessage, ServerMessage};
@@ -20,8 +21,11 @@ pub struct ChatUi {
     messages: Vec<ServerMessage>,
 
     status: Status,
+
+    id: u64,
 }
 
+static CHAT_ID: AtomicU64 = AtomicU64::new(0);
 
 impl ChatUi {
     pub fn new(connection: Connection) -> ChatUi {
@@ -31,6 +35,7 @@ impl ChatUi {
             messages: vec![],
 
             status: Status::Connecting,
+            id: CHAT_ID.fetch_add(1, Ordering::SeqCst),
         }
     }
 
@@ -52,69 +57,70 @@ impl ChatUi {
             }
         }
 
-        egui::CentralPanel::default().show(ctx, |ui| {
-            ui.horizontal(|ui| {
-                ui.label("Chat App");
+        egui::Window::new(format!("Chat {}", self.id))
+            .show(ctx, |ui| {
+                ui.horizontal(|ui| {
+                    ui.label("Chat App");
 
-                match &self.status {
-                    Status::Connecting => {
-                        ui.label("Connecting");
-                        ui.spinner();
+                    match &self.status {
+                        Status::Connecting => {
+                            ui.label("Connecting");
+                            ui.spinner();
+                        }
+                        Status::Connected => {
+                            ui.label("Connected");
+                        }
+                        Status::Error(error) => {
+                            ui.label("Error: ");
+                            ui.label(error);
+                        }
+                        Status::Closed => {
+                            ui.label("Disconnected");
+                        }
                     }
-                    Status::Connected => {
-                        ui.label("Connected");
-                    }
-                    Status::Error(error) => {
-                        ui.label("Error: ");
-                        ui.label(error);
-                    }
-                    Status::Closed => {
-                        ui.label("Disconnected");
-                    }
-                }
-            });
-            let scroll_height = ui.available_height() - 27.0;
-            let text_height = ui.text_style_height(&TextStyle::Body);
-            ui.vertical(|ui| {
-                ScrollArea::vertical()
-                    .stick_to_bottom()
-                    .auto_shrink([false, false])
-                    .max_height(scroll_height)
-                    .show_rows(
-                        ui,
-                        text_height,
-                        self.messages.len(),
-                        |ui, row_range| {
-                            for row in row_range {
-                                match &self.messages[row] {
-                                    ServerMessage::Message { user, text } => {
-                                        ui.horizontal(|ui| {
-                                            ui.label(format!("{}:", user));
-                                            ui.label(text);
-                                        });
-                                    }
-                                    ServerMessage::Joined { user } => {
-                                        ui.label(RichText::new(&format!("{user} joined the room")).italics());
-                                    }
-                                    ServerMessage::Left { user } => {
-                                        ui.label(RichText::new(&format!("{user} left the room")).italics());
+                });
+                let scroll_height = ui.available_height() - 27.0;
+                let text_height = ui.text_style_height(&TextStyle::Body);
+                ui.vertical(|ui| {
+                    ScrollArea::vertical()
+                        .stick_to_bottom()
+                        .auto_shrink([false, false])
+                        .max_height(scroll_height)
+                        .show_rows(
+                            ui,
+                            text_height,
+                            self.messages.len(),
+                            |ui, row_range| {
+                                for row in row_range {
+                                    match &self.messages[row] {
+                                        ServerMessage::Message { user, text } => {
+                                            ui.horizontal(|ui| {
+                                                ui.label(format!("{}:", user));
+                                                ui.label(text);
+                                            });
+                                        }
+                                        ServerMessage::Joined { user } => {
+                                            ui.label(RichText::new(&format!("{user} joined the room")).italics());
+                                        }
+                                        ServerMessage::Left { user } => {
+                                            ui.label(RichText::new(&format!("{user} left the room")).italics());
+                                        }
                                     }
                                 }
+                            },
+                        );
+                    ui.horizontal(|ui| {
+                        let input = ui.text_edit_singleline(&mut self.input_message);
+                        ui.add_enabled_ui(self.input_message.len() > 0, |ui| {
+                            if ui.button("Send").clicked() || input.lost_focus() && ui.input().key_pressed(Key::Enter) && self.input_message.trim() != "" {
+                                input.request_focus();
+                                self.connection.send(ClientMessage::SendMessage {
+                                    text: std::mem::take(&mut self.input_message),
+                                });
                             }
-                        },
-                    );
-                ui.horizontal(|ui| {
-                    let input = ui.text_edit_singleline(&mut self.input_message);
-                    ui.add_enabled_ui(self.input_message.len() > 0, |ui| {
-                        if ui.button("Send").clicked() || input.lost_focus() && ui.input().key_pressed(Key::Enter) && self.input_message.trim() != "" {
-                            input.request_focus();
-                            self.connection.send(ClientMessage::SendMessage {
-                                text: std::mem::take(&mut self.input_message),
-                            });
-                        }
+                        });
                     });
                 });
             });
-        });
     }
 }

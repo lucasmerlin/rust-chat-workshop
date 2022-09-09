@@ -1,5 +1,5 @@
 use eframe::egui;
-use ewebsock::{connect, connect_with_wakeup, WsEvent, WsMessage, WsReceiver, WsSender};
+use ewebsock::{connect_with_wakeup, WsEvent, WsReceiver, WsSender};
 use ewebsock::WsMessage::Text;
 use models::{ClientMessage, ServerMessage};
 
@@ -20,7 +20,7 @@ impl Connection {
 
     pub fn new(server: String, room: String, user: String, ctx: egui::Context) -> Connection {
 
-        let (mut sender, receiver) = connect_with_wakeup(&server, move || ctx.request_repaint()).expect("Failed to create WebSocket");
+        let (sender, receiver) = connect_with_wakeup(&server, move || ctx.request_repaint()).expect("Failed to create WebSocket");
 
         Connection {
             sender,
