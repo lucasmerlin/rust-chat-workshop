@@ -2,6 +2,39 @@
 
 --- 
 
+# About me
+- Name: Lucas Meurer
+- Working for newcubator since 2020
+- Made:
+  - Android Apps: 
+    - https://play.google.com/store/apps/developer?id=Lucas+Meurer
+  - https://malmal.io
+    - Made using lots of TypeScript
+  - https://hellopaint.io
+    - Lots of TypeScript and Rust
+  - https://hurlurl.com
+    - Pure Rust
+
+---
+
+# Why I learned Rust
+
+- I needed a performant, crash resistant and safe backend for HelloPaint 
+- Previous backend in Go was
+  - Also fast
+  - Did crash from time to time
+  - Not fun to work with (I personally dislike Go)
+
+---
+
+# Questions
+
+- Who has heard of Rust before?
+- Who has tried Rust before?
+  - How'd it go?
+
+---
+
 # Rust Setup
 
 Install rust via https://rustup.rs/
@@ -519,6 +552,7 @@ impl RoomHandle {
 We can now send and receive chat messages! Yay!
 
 ---
+
 # Remove users
 
 ```rust
@@ -543,5 +577,56 @@ impl RoomActor {
             });
         }
     }
+}
+```
+
+--- 
+
+# Testing
+
+Tests in Rust are written in the same File as the code it's testing.
+A simple test looks like this:
+
+```rust
+#[cfg(test)]
+mod tests {
+  #[test]
+  fn it_works() {
+    let result = 2 + 2;
+    assert_eq!(result, 4);
+  }
+}
+```
+
+The module is optional, it can include helper functions, e.g. for test setup logic.
+
+---
+
+# Example Test
+
+```rust
+#[tokio::test]                                  // 
+async fn room_actor_join() {                    // 
+  let (tx, rx) = mpsc::channel(1);
+  let mut actor = RoomActor {
+    rx,
+    next_connection_id: 0,
+    users: HashMap::new(),
+  };
+
+  tokio::spawn(async move {
+    actor.run().await
+  });
+
+  let (ws_tx, mut ws_rx) = mpsc::channel(1);
+  let (join_tx, join_rx) = oneshot::channel();
+  tx.send(RoomMessage::Join(Connection {
+    user: "test".to_string(),
+    sender: ws_tx,
+  }, join_tx)).await.unwrap();
+
+  let conn_id = join_rx.await.unwrap();
+  assert_eq!(conn_id, 0);
+  assert_eq!(ws_rx.recv().await.unwrap(), tungstenite::Message::Text(r#"{"type":"Joined","user":"test"}"#.to_string()))
 }
 ```
