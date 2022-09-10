@@ -130,3 +130,28 @@ impl RoomHandle {
         });
     }
 }
+
+#[tokio::test]
+async fn room_actor_join() {
+    let (tx, rx) = mpsc::channel(1);
+    let mut actor = RoomActor {
+        rx,
+        next_connection_id: 0,
+        users: HashMap::new(),
+    };
+
+    tokio::spawn(async move {
+        actor.run().await
+    });
+
+    let (ws_tx, mut ws_rx) = mpsc::channel(1);
+    let (join_tx, join_rx) = oneshot::channel();
+    tx.send(RoomMessage::Join(Connection {
+        user: "test".to_string(),
+        sender: ws_tx,
+    }, join_tx)).await.unwrap();
+
+    let conn_id = join_rx.await.unwrap();
+    assert_eq!(conn_id, 0);
+    assert_eq!(ws_rx.recv().await.unwrap(), tungstenite::Message::Text(r#"{"type":"Joined","user":"test"}"#.to_string()))
+}
