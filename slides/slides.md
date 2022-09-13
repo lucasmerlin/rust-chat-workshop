@@ -35,6 +35,13 @@
 
 ---
 
+# End Goal
+
+- We'll build a working chat server with group chats
+- We'll learn basics about rust and rust concurrency
+
+---
+
 # Rust Setup
 
 Install rust via https://rustup.rs/
@@ -42,12 +49,71 @@ Install rust via https://rustup.rs/
 Optional: Install Extension for your favourite IDE
  - https://www.jetbrains.com/de-de/rust/
  - https://code.visualstudio.com/docs/languages/rust
+---
+
+# Some Rust basics
+While rust is installing, let's talk about Ownership
+> Ownership is Rust’s most unique feature
+> 
+> ~ *rust book*
+
+
+- Rust has no garbage collector
+- To be memory safe, rust has the ownership model
+- Every value has an *owner*
+- There can only be one owner
+- The value is dropped when the owner goes out of scope
+
+---
+
+# Borrowing
+- We can borrow a value from an owner to get a reference
+- A reference is a bit like a pointer
+- There can only be one mutable reference or multiple immutable references
+
+```rust
+fn main() {
+    let static_string = "Hello";                                // &str, static reference
+    let mut hello = static_string.to_string();                  // String, owner
+    let ref_1 = &hello;                                         // &String, reference
+    let ref_2 = &hello;                                         // &String, reference
+    // This will be an error because hello is already borrowed
+    let mut_ref = &mut hello;                                   // &mut String, mutable reference
+    println!("{hello}, {ref_1}, {ref_2}, {mut_ref}");
+    mut_ref.push_str(" World"); 
+}
+```
+
+--- 
+
+# Traits
+Traits are similar to interfaces in other languages
+- We won't write our own traits in this workshop but we'll use some built in traits
+- Often encountered traits are Clone, Debug, Serialize, Deserialize
+- Some traits can be implemented with a derive macro:
+
+```rust
+#[derive(Clone, Debug)]             // Adds implementations for Clone and Debug traits
+struct Test {
+    text: String,                   // This only works if every member also implements Clone and Debug
+}
+
+fn main() {
+    let test = Test {
+        text: "Hello".to_string(),
+    };
+    println!("{test:?}");           // Will print: Test { text: "Hello" }
+    let clone = test.clone();       // Calls clone on all members
+}
+```
+
+Instead of using derive we could also add a custom implementation for a trait, e.g. to customize println format.
 
 ---
 
 # Checkout the github repo
 Contains a cargo workspace with the chat ui
-https://github.com/lucasmerlin/ww-chat-app
+https://github.com/lucasmerlin/rust-chat-app
 - cargo is rusts package manager, like npm
 - cargo workspaces is similar to nx, lerna, turborepo
 ```bash 
@@ -100,6 +166,7 @@ Add the package to the root Cargo.toml to fix it:
 
 members = [
     "app",
+    "models",
     "server",
 ]
 ```
@@ -114,10 +181,13 @@ Edit `server/Cargo.toml`
 ```toml
 [dependencies]
 tokio = { version = "1", features = ["full"] }  # Async runtime for rust
-tokio-tungstenite = "0.17"                      # WebSocket server library
+tungstenite = "0.17"                            # WebSocket server library
+tokio-tungstenite = "0.17"                      
 serde = "1"                                     # Serialization
 serde_json = "1"                                # Json Serialization
 futures-util = "0.3"                            # Async utils
+
+models = { path = "../models"}                  # Contains models 
 ```
 
 When you run again, it should automatically download and compile dependencies:
@@ -148,7 +218,7 @@ async fn main() -> Result<(), Error> {              // Rust uses the Result enum
  
 Rust has two string types:
 - str: A fixed size, immutable string, mostly seen as &str
-- String: A mutable sting type, a bit like Java's StringBuilder
+- String: A mutable string type, a bit like Java's StringBuilder
 String literals are always &str, basically a reference into the programs binary.
 To get a String instance, call `.to_string()`
 
@@ -271,6 +341,7 @@ struct RoomActor {
     rx: mpsc::Receiver<RoomMessage>,                // Multiple Producer Single Consumer channel for message passing
                                                     // The actor is the consumer
     next_connection_id: u64,                        // We'll generate a connection id for each user
+    users: HashMap<u64, Connection>,
 }
 #[derive(Clone)]                                    // We should be able to clone the handle
 pub struct RoomHandle {
@@ -304,11 +375,11 @@ impl RoomActor {
     pub async fn run(&mut self) {
         while let Some(msg) = self.rx.recv().await {
             match msg {
-                RoomMessage::Join(connection, send_uid) => {
+                RoomMessage::Join(connection, send_conn_id) => {
                     println!("User {} joined", connection.user);
                     
                     self.users.insert(self.next_connection_id, connection);
-                    send_uid.send(self.next_connection_id).unwrap();
+                    send_conn_id.send(self.next_connection_id).unwrap();
                     self.next_connection_id += 1;
                 }
                 _ => ()             // We'll handle the other cases later
@@ -479,7 +550,7 @@ impl RoomActor {
     pub async fn run(&mut self) {
         while let Some(msg) = self.rx.recv().await {
             match msg {
-                RoomMessage::Join(connection, send_uid) => {
+                RoomMessage::Join(connection, send_conn_id) => {
                     let user = connection.user.clone();
 
                     [...]
@@ -543,7 +614,7 @@ impl RoomHandle {
                     actor_tx.send(RoomMessage::ClientMessage(value, user.clone())).await.unwrap();
                 }
             }
-            actor_tx.send(RoomMessage::Leave(uid)).await.unwrap();
+            actor_tx.send(RoomMessage::Leave(conn_id)).await.unwrap();
         });
     }
 }
@@ -561,16 +632,16 @@ impl RoomActor {
         while let Some(msg) = self.rx.recv().await {
             match msg {
                 [...]
-                RoomMessage::Leave(uid) => {
-                    self.remove_user(uid);
+                RoomMessage::Leave(conn_id) => {
+                    self.remove_user(conn_id);
                 }
                 _ => ()                                 // This needs to stay because we didn't handle the 
             }                                           // RoomMessage::ClientMessage(ClientMessage::Connect) case
         }
     }
     [...]
-    fn remove_user(&mut self, uid: u64) {
-        let connection = self.users.remove(&uid);
+    fn remove_user(&mut self, conn_id: u64) {
+        let connection = self.users.remove(&conn_id);
         if let Some(connection) = connection {
             self.broadcast(ServerMessage::Left {
                 user: connection.user,
@@ -579,6 +650,24 @@ impl RoomActor {
     }
 }
 ```
+
+--- 
+
+# We're done!
+
+Things that could be improved upon:
+- Remove empty chat rooms
+- Authentication, user list, etc
+- Move connection logic into another actor
+
+---
+
+# Further Reading
+
+- https://doc.rust-lang.org/book/
+  - Especially the chapter about ownership
+- https://ryhl.io/blog/actors-with-tokio/
+  - Blog post about actors with rust
 
 --- 
 
