@@ -39,7 +39,7 @@ impl ChatUi {
         }
     }
 
-    pub fn ui(&mut self, ctx: &egui::Context) {
+    pub fn ui(&mut self, ctx: &egui::Context) -> bool {
         while let Some(event) = self.connection.try_recv() {
             match event {
                 ConnectionEvent::Opened => {
@@ -57,7 +57,9 @@ impl ChatUi {
             }
         }
 
+        let mut window_open = true;
         egui::Window::new(format!("Chat {}", self.id))
+            .open(&mut window_open)
             .show(ctx, |ui| {
                 ui.horizontal(|ui| {
                     ui.label("Chat App");
@@ -122,5 +124,7 @@ impl ChatUi {
                     });
                 });
             });
+
+        !window_open
     }
 }

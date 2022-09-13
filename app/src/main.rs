@@ -134,9 +134,9 @@ impl eframe::App for MyApp {
         });
         CentralPanel::default().show(ctx, |_ui|{});
 
-        for chat in &mut self.chats {
-            chat.ui(ctx);
-        }
+        self.chats.retain_mut(|chat| {
+            !chat.ui(ctx)
+        });
 
         // currently app.save is not called when quitting on macos so we do it here manually
         if save_state {
